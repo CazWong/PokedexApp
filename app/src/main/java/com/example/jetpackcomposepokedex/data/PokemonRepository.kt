@@ -16,7 +16,7 @@ class PokemonRepository @Inject constructor(
         val response = try {
             api.getDataList(limit, offset)
         } catch (e: IOException) {
-            return UiState.Error("Something went the Poke Wrong!")
+            return UiState.Error("Something went PokeWrong!")
         }
         return UiState.Success(response)
     }
@@ -25,7 +25,7 @@ class PokemonRepository @Inject constructor(
         val response = try {
             api.getDetailInfo(name)
         } catch (e: IOException) {
-            return UiState.Error("Something went the Poke Wrong!")
+            return UiState.Error("Something went PokeWrong!")
         }
         return UiState.Success(response)
     }

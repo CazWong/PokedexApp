@@ -19,6 +19,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -35,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -81,16 +84,34 @@ fun PokemonListScreen(
 
             }
             LazyVerticalGrid(
-                columns = GridCells.Adaptive(128.dp),
-                modifier = Modifier,
+                columns = GridCells.Fixed(2),
+                modifier = Modifier.padding(top = 50.dp, start = 16.dp, end = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(items = pokemonListResults) { pokemon ->
-                    if (!endOfResults) {
+                    if (!endOfResults && !isLoading) {
                         viewModel.getPokemonsAndPaginate()
                     }
                     PokedexCard(pokedexEntry = pokemon, navController = navController)
                 }
             }
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                if (loadError.isNotEmpty()) {
+                    RetrySection(error = loadError) {
+                        viewModel.getPokemonsAndPaginate()
+                    }
+                }
+            }
+
         }
     }
 }
@@ -147,7 +168,6 @@ fun PokedexCard(
     Card(
         modifier = modifier
             .aspectRatio(1f)
-            .padding(16.dp)
             .clickable { navController.navigate("detailScreen/${dominantColor}/${pokedexEntry.name}") },
         shape = MaterialTheme.shapes.medium,
     ) {
@@ -181,23 +201,57 @@ fun PokedexCard(
                     loading = {
                         CircularProgressIndicator(
                             modifier = Modifier
-                                .size(20.dp)
+                                .scale(0.5f)
                                 .align(Alignment.Center),
                             color = Color.LightGray,
                             strokeWidth = 5.dp
+                        )
+                    },
+                    error = {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_broken_image),
+                            contentDescription = null
                         )
                     },
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                 )
             }
-            Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = pokedexEntry.name,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurface,
-                style = MaterialTheme.typography.titleSmall
+                style = MaterialTheme.typography.titleMedium
             )
+        }
+    }
+}
+
+@Composable
+fun RetrySection(
+    error: String,
+    onClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = error,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.error
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = onClick,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.error
+            ),
+            shape = RoundedCornerShape(50.dp),
+            elevation = ButtonDefaults.buttonElevation(
+                defaultElevation = 8.dp
+            )
+        ) {
+            Text(text = "Try again")
         }
     }
 }
@@ -209,4 +263,14 @@ fun SearchBarPreview() {
         SearchBar(onSearch = { Log.i("myTag", "This is my message") })
     }
 }
+
+//@Preview(showBackground = true)
+//@Composable
+//fun RetryButtonPreview() {
+//    JetpackComposePokedexTheme {
+//        RetrySection(onClick = { })
+//    }
+//}
+
+
 
