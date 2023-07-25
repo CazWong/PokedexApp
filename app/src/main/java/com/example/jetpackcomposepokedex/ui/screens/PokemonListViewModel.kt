@@ -12,6 +12,7 @@ import com.example.jetpackcomposepokedex.data.PokemonRepository
 import com.example.jetpackcomposepokedex.model.PokedexEntry
 import com.example.jetpackcomposepokedex.util.UiState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -20,7 +21,7 @@ import javax.inject.Inject
  * and logic (behaviour and operations behind the scenes)
  */
 
-const val NUMBER_OF_POKEMONS_FETCHED =20
+const val NUMBER_OF_POKEMONS_FETCHED = 20
 
 @HiltViewModel
 class PokemonListViewModel @Inject constructor(
@@ -37,6 +38,15 @@ class PokemonListViewModel @Inject constructor(
     var isLoading = mutableStateOf(false)
     var endOfResults = mutableStateOf(false)
 
+    // cached list to save pokemons and display them depending on searching states
+    private var cachedPokemonList = listOf<PokedexEntry>()
+
+    // looks for NO INPUT on searchbar in order to display all pokemons
+    var isSearchStarting = true
+
+    // looks into search bar for a search term
+    var isSearching = mutableStateOf(false)
+
     init {
         getPokemonsAndPaginate()
     }
@@ -45,7 +55,10 @@ class PokemonListViewModel @Inject constructor(
         viewModelScope.launch {
             isLoading.value = true
             // 1. Loads pokemons list ( 20, 0 * 20)
-            val listResult = pokemonRepository.getPokemonList(NUMBER_OF_POKEMONS_FETCHED, currentPage * NUMBER_OF_POKEMONS_FETCHED)
+            val listResult = pokemonRepository.getPokemonList(
+                NUMBER_OF_POKEMONS_FETCHED,
+                currentPage * NUMBER_OF_POKEMONS_FETCHED
+            )
             // 2. Account for loading and error handling if something goes wrong with fetching data
 
             when (listResult) {
@@ -53,16 +66,22 @@ class PokemonListViewModel @Inject constructor(
                     // when successful the data will have loaded &
                     // endOfResults will turn true if it meets the following condition:
                     //      number of pages and number of pokemons fetched is greater than number of list results. ex: (  220  >= 200 )
-                    endOfResults.value = currentPage * NUMBER_OF_POKEMONS_FETCHED >= listResult.data!!.count
+                    endOfResults.value =
+                        currentPage * NUMBER_OF_POKEMONS_FETCHED >= listResult.data!!.count
                     // 1. Get image Url for each pokemon
                     val getPokemonListEntries = listResult.data.results.map { result ->
-                        val pokemonIndex = if(result.url.endsWith("/")) {
+                        val pokemonIndex = if (result.url.endsWith("/")) {
                             result.url.dropLast(1).takeLastWhile { it.isDigit() }
                         } else {
                             result.url.takeLastWhile { it.isDigit() }
                         }
-                        val url =  "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemonIndex}.png"
-                        PokedexEntry(result.name.replaceFirstChar { it.uppercase() }, imageUrl = url, number = pokemonIndex.toInt())
+                        val url =
+                            "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemonIndex}.png"
+                        PokedexEntry(
+                            result.name.replaceFirstChar { it.uppercase() },
+                            imageUrl = url,
+                            number = pokemonIndex.toInt()
+                        )
                     }
                     // When successful, reset States of variables to
                     currentPage++
@@ -70,11 +89,40 @@ class PokemonListViewModel @Inject constructor(
                     isLoading.value = false
                     pokemonListResults.value = pokemonListResults.value + getPokemonListEntries
                 }
+
                 is UiState.Error -> {
                     loadError.value = listResult.message!!
                     isLoading.value = false
                 }
             }
+        }
+    }
+
+    fun searchPokemonList(searchText: String) {
+        val listToSearch = if (isSearchStarting) {
+            pokemonListResults.value
+        } else {
+            cachedPokemonList
+        }
+        viewModelScope.launch(Dispatchers.Default) {
+            if (searchText.isEmpty()) {
+                pokemonListResults.value = cachedPokemonList
+                isSearchStarting = true
+                isSearching.value
+                return@launch
+            }
+            val results = listToSearch.filter {
+                it.name.contains(
+                    searchText.trim(),
+                    ignoreCase = true
+                ) || it.number.toString() == searchText.trim()
+            }
+            if (isSearchStarting) {
+                cachedPokemonList = pokemonListResults.value
+                isSearchStarting = false
+            }
+            pokemonListResults.value = results
+            isSearching.value = true
         }
     }
 

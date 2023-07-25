@@ -66,6 +66,7 @@ fun PokemonListScreen(
     val endOfResults by remember { viewModel.endOfResults }
     val loadError by remember { viewModel.loadError }
     val isLoading by remember { viewModel.isLoading }
+    val isSearching by remember { viewModel.isSearching }
 
     Surface(
         color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()
@@ -81,7 +82,7 @@ fun PokemonListScreen(
             SearchBar(
                 modifier = Modifier.padding(horizontal = 20.dp)
             ) {
-
+                viewModel.searchPokemonList(it)
             }
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
@@ -90,7 +91,7 @@ fun PokemonListScreen(
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(items = pokemonListResults) { pokemon ->
-                    if (!endOfResults && !isLoading) {
+                    if (!endOfResults && !isLoading && !isSearching) {
                         viewModel.getPokemonsAndPaginate()
                     }
                     PokedexCard(pokedexEntry = pokemon, navController = navController)
@@ -268,7 +269,7 @@ fun SearchBarPreview() {
 //@Composable
 //fun RetryButtonPreview() {
 //    JetpackComposePokedexTheme {
-//        RetrySection(onClick = { })
+//        retrySection(onClick = { })
 //    }
 //}
 
